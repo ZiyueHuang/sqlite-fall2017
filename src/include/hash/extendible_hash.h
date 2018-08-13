@@ -12,28 +12,54 @@
 #include <cstdlib>
 #include <vector>
 #include <string>
+#include <map>
+#include <memory>
+#include <mutex>
 
 #include "hash/hash_table.h"
 
 namespace cmudb {
 
-template <typename K, typename V>
+template<typename K, typename V>
 class ExtendibleHash : public HashTable<K, V> {
-public:
+ public:
   // constructor
   ExtendibleHash(size_t size);
+
   // helper function to generate hash addressing
   size_t HashKey(const K &key);
+
   // helper function to get global & local depth
   int GetGlobalDepth() const;
+
   int GetLocalDepth(int bucket_id) const;
+
   int GetNumBuckets() const;
+
   // lookup and modifier
   bool Find(const K &key, V &value) override;
+
   bool Remove(const K &key) override;
+
   void Insert(const K &key, const V &value) override;
 
-private:
+ private:
   // add your own member variables here
+  class Bucket {
+   public:
+    int local_depth_;
+    std::map<K, V> map_;
+
+    Bucket(int depth) : local_depth_(depth) {}
+  };
+
+  int GetBucketIndex(size_t hash_value) const;
+  
+  std::shared_ptr<Bucket> GetBucket(const K &key);
+
+  std::vector<std::shared_ptr<Bucket>> bucket_directory_;
+  int global_depth_;
+  const size_t size_limit_;
+  std::mutex latch_;
 };
 } // namespace cmudb

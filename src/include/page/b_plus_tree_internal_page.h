@@ -25,9 +25,11 @@ namespace cmudb {
 #define B_PLUS_TREE_INTERNAL_PAGE_TYPE                                         \
   BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>
 
+//#define BPInternalPage BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>
+
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeInternalPage : public BPlusTreePage {
-public:
+ public:
   // must call initialize method after "create" a new node
   void Init(page_id_t page_id, page_id_t parent_id = INVALID_PAGE_ID);
 
@@ -42,31 +44,32 @@ public:
   int InsertNodeAfter(const ValueType &old_value, const KeyType &new_key,
                       const ValueType &new_value);
   void Remove(int index);
-  ValueType RemoveAndReturnOnlyChild();
 
   void MoveHalfTo(BPlusTreeInternalPage *recipient,
                   BufferPoolManager *buffer_pool_manager);
   void MoveAllTo(BPlusTreeInternalPage *recipient, int index_in_parent,
-                 BufferPoolManager *buffer_pool_manager);
+                 BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator);
   void MoveFirstToEndOf(BPlusTreeInternalPage *recipient,
                         BufferPoolManager *buffer_pool_manager);
   void MoveLastToFrontOf(BPlusTreeInternalPage *recipient,
                          int parent_index,
                          BufferPoolManager *buffer_pool_manager);
+
   // DEUBG and PRINT
   std::string ToString(bool verbose) const;
   void QueueUpChildren(std::queue<BPlusTreePage *> *queue,
                        BufferPoolManager *buffer_pool_manager);
 
-private:
-  void CopyHalfFrom(MappingType *items, int size,
-                    BufferPoolManager *buffer_pool_manager);
-  void CopyAllFrom(MappingType *items, int size,
-                   BufferPoolManager *buffer_pool_manager);
-  void CopyLastFrom(const MappingType &pair,
-                    BufferPoolManager *buffer_pool_manager);
-  void CopyFirstFrom(const MappingType &pair, int parent_index,
-                     BufferPoolManager *buffer_pool_manager);
+  void SetValueAt(int index, const ValueType &v);
+
+  KeyType FirstKey() const {
+    assert(GetSize() != 0);
+    return array[1].first;
+  }
+
+ private:
+
   MappingType array[0];
 };
+
 } // namespace cmudb

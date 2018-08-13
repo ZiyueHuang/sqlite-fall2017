@@ -20,15 +20,17 @@
 
 namespace cmudb {
 
+enum OperationType { kFind=0, kInsert, kDelete };
+
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
 // Main class providing the API for the Interactive B+ Tree.
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTree {
-public:
+ public:
   explicit BPlusTree(const std::string &name,
-                           BufferPoolManager *buffer_pool_manager,
-                           const KeyComparator &comparator,
-                           page_id_t root_page_id = INVALID_PAGE_ID);
+                     BufferPoolManager *buffer_pool_manager,
+                     const KeyComparator &comparator,
+                     page_id_t root_page_id = INVALID_PAGE_ID);
 
   // Returns true if this B+ tree has no keys and values.
   bool IsEmpty() const;
@@ -60,10 +62,12 @@ public:
                       Transaction *transaction = nullptr);
   // expose for test purpose
   B_PLUS_TREE_LEAF_PAGE_TYPE *FindLeafPage(const KeyType &key,
+                                           Transaction *transaction = nullptr,
+                                           OperationType op_type = kFind,
                                            bool leftMost = false);
 
-private:
-  void StartNewTree(const KeyType &key, const ValueType &value);
+ private:
+  void StartNewTree(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr);
 
   bool InsertIntoLeaf(const KeyType &key, const ValueType &value,
                       Transaction *transaction = nullptr);
@@ -72,28 +76,40 @@ private:
                         BPlusTreePage *new_node,
                         Transaction *transaction = nullptr);
 
-  template <typename N> N *Split(N *node);
+  template<typename N>
+  N *Split(N *node);
 
-  template <typename N>
+  template<typename N>
   bool CoalesceOrRedistribute(N *node, Transaction *transaction = nullptr);
 
-  template <typename N>
+  template<typename N>
   bool Coalesce(
       N *&neighbor_node, N *&node,
       BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *&parent,
       int index, Transaction *transaction = nullptr);
 
-  template <typename N> void Redistribute(N *neighbor_node, N *node, int index);
+  template<typename N>
+  void Redistribute(N *neighbor_node, N *node, int index);
 
   bool AdjustRoot(BPlusTreePage *node);
 
   void UpdateRootPageId(int insert_record = false);
 
+  void ReleaseAllLatches(Transaction *transaction, OperationType op_type=kFind, bool dirty=false);
+
   // member variable
   std::string index_name_;
-  page_id_t root_page_id_;
+
+  std::atomic<page_id_t> root_page_id_;
+
   BufferPoolManager *buffer_pool_manager_;
+
   KeyComparator comparator_;
+
+  mutable std::mutex mutex_; //protect root_page_id_
+
+  using BPlusTreeParentPage = BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>;
+
 };
 
 } // namespace cmudb

@@ -17,16 +17,17 @@
 namespace cmudb {
 
 class LogManager {
-public:
+ public:
   LogManager(DiskManager *disk_manager)
       : next_lsn_(0), persistent_lsn_(INVALID_LSN),
         disk_manager_(disk_manager) {
-    // TODO: you may intialize your own defined memeber variables here
     log_buffer_ = new char[LOG_BUFFER_SIZE];
     flush_buffer_ = new char[LOG_BUFFER_SIZE];
+    flush_thread_on = false;
   }
 
   ~LogManager() {
+    StopFlushThread();
     delete[] log_buffer_;
     delete[] flush_buffer_;
     log_buffer_ = nullptr;
@@ -35,6 +36,7 @@ public:
   // spawn a separate thread to wake up periodically to flush
   void RunFlushThread();
   void StopFlushThread();
+  void Flush();
 
   // append a log record into log buffer
   lsn_t AppendLogRecord(LogRecord &log_record);
@@ -44,10 +46,11 @@ public:
   inline void SetPersistentLSN(lsn_t lsn) { persistent_lsn_ = lsn; }
   inline char *GetLogBuffer() { return log_buffer_; }
 
-private:
+ private:
   // TODO: you may add your own member variables
   // also remember to change constructor accordingly
-
+  void FlushThread();
+  void FlushImpl();
   // atomic counter, record the next log sequence number
   std::atomic<lsn_t> next_lsn_;
   // log records before & include persistent_lsn_ have been written to disk
@@ -63,6 +66,13 @@ private:
   std::condition_variable cv_;
   // disk manager
   DiskManager *disk_manager_;
+
+  //========new member==========
+  std::atomic<bool> flush_thread_on;
+  std::condition_variable flush;
+  std::mutex append_latch_;
+  int flush_buffer_size_{0};
+  int log_buffer_size_{0};
 };
 
 } // namespace cmudb

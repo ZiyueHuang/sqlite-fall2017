@@ -31,7 +31,7 @@ public:
 
   void Redo();
   void Undo();
-  bool DeserializeLogRecord(const char *data, LogRecord &log_record);
+  bool DeserializeLogRecord(const char *data, int size, LogRecord &log_record);
 
 private:
   // TODO: you can add whatever member variable here

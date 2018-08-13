@@ -34,7 +34,7 @@ class TableHeap;
 
 // write set record
 class WriteRecord {
-public:
+ public:
   WriteRecord(RID rid, WType wtype, const Tuple &tuple, TableHeap *table)
       : rid_(rid), wtype_(wtype), tuple_(tuple), table_(table) {}
 
@@ -47,7 +47,7 @@ public:
 };
 
 class Transaction {
-public:
+ public:
   Transaction(Transaction const &) = delete;
   Transaction(txn_id_t txn_id)
       : state_(TransactionState::GROWING),
@@ -89,6 +89,14 @@ public:
     return shared_lock_set_;
   }
 
+  void InsertIntoSharedLockSet(const RID &rid) {
+    shared_lock_set_->insert(rid);
+  }
+
+  void InsertIntoExclusiveLockSet(const RID &rid) {
+    exclusive_lock_set_->insert(rid);
+  }
+
   inline std::shared_ptr<std::unordered_set<RID>> GetExclusiveLockSet() {
     return exclusive_lock_set_;
   }
@@ -101,7 +109,7 @@ public:
 
   inline void SetPrevLSN(lsn_t prev_lsn) { prev_lsn_ = prev_lsn; }
 
-private:
+ private:
   TransactionState state_;
   // thread id, single-threaded transactions
   std::thread::id thread_id_;
@@ -113,7 +121,7 @@ private:
   lsn_t prev_lsn_;
 
   // Below are used by concurrent index
-  // this deque contains page pointer that was latche during index operation
+  // this deque contains page pointer that was latched during index operation
   std::shared_ptr<std::deque<Page *>> page_set_;
   // this set contains page_id that was deleted during index operation
   std::shared_ptr<std::unordered_set<page_id_t>> deleted_page_set_;
